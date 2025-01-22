@@ -12,16 +12,25 @@ import {
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
 
+import { useStoreSymbolAlert } from "../../hooks/useStore";
+
 interface PropsSymbol {
   value: string;
   label: string;
 }
 
 const Symbols = () => {
+  const inputRef = React.useRef<TextInput>(null);
+
   const [loadPetition, setLoadPetition] = useState<boolean>(true);
+  const [disabledBtn, setDisabledBtn] = useState<boolean>(true);
   const [symbolsData, setSymbolsData] = useState<PropsSymbol[]>([]);
   const [symbolSelected, setSymbolSelected] = useState<string>("");
   const [textValue, setTextValue] = useState<string>("");
+
+  // Zustand
+  const { alertUsdValue, symbolValue, setSymbolValue, setAlertUsdValue } =
+    useStoreSymbolAlert();
 
   // I created this array to filter the data from the API because the response is too large
   const SYMBOLS_MATCH = [
@@ -64,15 +73,31 @@ const Symbols = () => {
     }
   };
 
-  // Save alert function
+  // save alert function
   const onSaveAlert = () => {
-    console.log("ON_PRESS");
+    // save with zustand
+    try {
+      setSymbolValue(symbolSelected);
+      setAlertUsdValue(textValue);
+      Alert.alert("Alert saved successfully!");
+      if (inputRef.current) inputRef.current.blur();
+    } catch (error) {
+      Alert.alert("Error saving alert! Please, try again...");
+    }
   };
 
   // UseEffect to fetch data
   useEffect(() => {
     fetchSymbols();
   }, []);
+
+  // Disable button
+  useEffect(() => {
+    if (symbolSelected && textValue) {
+      return setDisabledBtn(false);
+    }
+    return setDisabledBtn(true);
+  }, [textValue, symbolSelected]);
 
   return (
     <View
@@ -98,6 +123,9 @@ const Symbols = () => {
         <ActivityIndicator size="large" color="#dedede" />
       ) : (
         <>
+          <Text style={{ color: "white", fontSize: 15, fontWeight: "bold" }}>
+            Select your symbol:
+          </Text>
           <Picker
             selectedValue={symbolSelected}
             onValueChange={(itemValue) => setSymbolSelected(itemValue)}
@@ -105,18 +133,30 @@ const Symbols = () => {
               borderWidth: 1,
               borderColor: "white",
               borderRadius: 8,
-              marginTop: 20,
+              marginTop: 10,
               minWidth: "100%",
               backgroundColor: "#dedede",
               color: "white",
             }}
           >
+            <Picker.Item label=" " value={""} />
             {symbolsData.map((item, index) => (
               <Picker.Item key={index} label={item.label} value={item.value} />
             ))}
           </Picker>
 
+          <Text
+            style={{
+              color: "white",
+              fontSize: 15,
+              fontWeight: "bold",
+              marginTop: 20,
+            }}
+          >
+            Add your limit price (USD):
+          </Text>
           <TextInput
+            ref={inputRef}
             onChangeText={(e) => {
               const numericValue = e.replace(/[^0-9]/g, "");
               setTextValue(numericValue);
@@ -124,7 +164,7 @@ const Symbols = () => {
             style={{
               backgroundColor: "white",
               height: 40,
-              marginTop: 20,
+              marginTop: 10,
               borderRadius: 8,
               paddingHorizontal: 10,
               color: "black",
@@ -134,13 +174,23 @@ const Symbols = () => {
             placeholder="$0.00"
           />
           <TouchableHighlight
-            style={{
-              backgroundColor: "#1db954",
-              padding: 10,
-              borderRadius: 8,
-              marginTop: 20,
-            }}
-            disabled={!symbolSelected || !textValue}
+            style={
+              disabledBtn
+                ? {
+                    backgroundColor: "#1db954",
+                    padding: 10,
+                    borderRadius: 8,
+                    marginTop: 20,
+                    opacity: 0.7,
+                  }
+                : {
+                    backgroundColor: "#1db954",
+                    padding: 10,
+                    borderRadius: 8,
+                    marginTop: 20,
+                  }
+            }
+            disabled={disabledBtn}
             onPress={onSaveAlert}
           >
             <Text
@@ -156,6 +206,11 @@ const Symbols = () => {
           </TouchableHighlight>
         </>
       )}
+      <Text style={{ color: "white" }}>:: ZUSTAND :: </Text>
+      <Text style={{ color: "white" }}>{`symbolValue : ${symbolValue}`}</Text>
+      <Text style={{ color: "white" }}>
+        {`alertUsdValue : $${alertUsdValue}`}
+      </Text>
     </View>
   );
 };
